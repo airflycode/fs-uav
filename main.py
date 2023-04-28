@@ -275,98 +275,6 @@ def doSingleImg(imgWPath,imgTpath,imgName,filesName):
             }
         return repo_data
 
-class FileEventHandler(FileSystemEventHandler):
-    def __init__(self):
-        FileSystemEventHandler.__init__(self)
-        self.last_filename = ""
-        
-    def on_moved(self, event):
-        if event.is_directory:
-            print("directory moved from {0} to {1}".format(event.src_path,event.dest_path))
-        else:
-            print("file moved from {0} to {1}".format(event.src_path,event.dest_path))
-
-    def on_created(self, event):
-        if event.is_directory:
-            print("directory created:{0}".format(event.src_path))
-        else:
-            print("file created:{0}".format(event.src_path))
-
-    def on_deleted(self, event):
-        if event.is_directory:
-            print("directory deleted:{0}".format(event.src_path))
-        else:
-            print("file deleted:{0}".format(event.src_path))
-
-    # def on_modified(self, event):
-    #     if event.is_directory:
-    #         print("directory modified:{0}".format(event.src_path))
-    #     else:
-    #         print("file modified:{0}".format(event.src_path))
-            
-    def on_closed(self, event): 
-        if not event.is_directory: 
-            print("file closed:", event.src_path)
-            filename = event.src_path.split('.')
-            if filename[-6]=="T.jpeg":
-                imgName = filename[:filename.index("_T")]
-                imgPath = LOCAL_UNTREAT+imgName+"_W.jpeg"
-                imgTpath = LOCAL_UNTREAT+imgName+"_T.jpeg"
-                jsonPath = LOCAL_JSON+imgName+"_F.json"
-                # busy wait _W.JPG ?
-                
-                # wait closed
-                # doSingleProcess
-                repo_data = doSingleImg(imgPath,imgTpath,imgName)
-                with open(jsonPath,"w") as fp:
-                    json.dump(repo_data,fp)
-                return 1
-
-
-
-    
-# * watchdog , a new file a new process 
-# if __name__ == "__main__":
-#     observer = Observer()
-#     event_handler = FileEventHandler()
-#     path = sys.argv[1] if len(sys.argv) > 1 else '.'
-#     observer.schedule(event_handler,path,True)
-#     observer.start()
-#     try:
-#         while True:
-#             time.sleep(1)
-#     except KeyboardInterrupt:
-#         observer.stop()
-#     observer.join()
-
-    
-    # old method 1 begin
-
-# configs = None
-# with open('config.yml','r') as f:
-#     configs = yaml.load(f,Loader=yaml.FullLoader)
-# auth = oss2.Auth(configs['ALIYUN_ACCESS_KEY_ID'], configs['ALIYUN_ACCESS_KEY_SECRET'])
-# bucket = oss2.Bucket(auth, configs['ALIYUN_EXTERNAL_END_POINT'], configs['BUCKET_NAME'])
-
-#     while(True):
-#         try:
-#             time.sleep(10)
-#             token = signup()
-#             getCurrTask(bucket, token)
-#         except Exception as e:
-#             traceback.print_exc()
-#             continue
-
-
-# def find_all_files(files_path):
-#     files_names = []
-#     thisFile = []
-#     """遍历指定文件夹所有指定类型文件"""
-#     for filename in glob.glob(files_path+'*_T.jpeg'):
-#         filename = filename.split("/")
-#         imgName = filename[-1].split(".")
-#         files_names.append(imgName[0][:-2])  # 以字符串形式保存
-#     return files_names 
 def find_all_files(files_path):
     files_names = []
     thisFile = []
@@ -388,30 +296,99 @@ def find_all_files(files_path):
         thisFile = []
     return files_names 
 
+
+def processfiles(filesPathsList,mysqlClient):
+    print("------img process on------")
+    for filesPath in filesPathsList:
+        filesName = filesPath.split("/")
+        filesName = filesName[-2]
+        imgName = ""
+        repo_json = []
+        imgTWnames = find_all_files(filesPath) 
+    
+        
+        dirs = [LOCAL_JSON+filesName,LOCAL_RAW+filesName,LOCAL_RECT+filesName]
+        for dir in dirs:
+            if not os.path.exists(dir):
+                os.makedirs(dir)
+        
+        for imgName in imgTWnames:
+            imgTname = imgName[0]
+            imgWname = imgName[1]
+            imgTpath = filesPath+imgTname
+            imgWPath = filesPath+imgWname
+            try:
+                repo_data = doSingleImg(imgWPath,imgTpath,imgName,filesName)
+                repo_json.append(repo_data) # 上传的数据 待mysql处理
+            #     with open(jsonPath,"w") as fp:
+            #         json.dump(repo_data,fp)
+            except Exception as e:
+                traceback.print_exc()
+        mysqlClient.deal_data(repo_json)
+        print("process done")
+    
+
 if __name__ == '__main__':
     
     # with open('/data/dealt.json', 'r') as f:
     #     json_data = json.load(f)
     #     json_data = json_data['dealt']
     #     print(json_data)
+    minio_client = MinioClient(False)
+    client = MysqlClient(True, base_path='/home/fushan/fs_fire_detect/rectImg')
+    old_count = 0
+    new_count = 0
+    is_uploading = False
     
+    
+    while True:
+        new_count = client.count()
+        if old_count < new_count:
+            print("uploading------")
+            # is_uploading = True
+            old_count = new_count
+            print(old_count)
+            time.sleep(60)
+        else:
+            print(old_count)
+            # if is_uploading:
+            filesPathsList = list(minio_client.load_data('/home/fushan/fs_fire_detect/untreatedImg/'))
+            print("downloading-----")
+            # is_uploading = False
+            if filesPathsList != []:
+                print("start process")
+                processfiles(filesPathsList,client)
+            else:
+                print("wayline data clear")
+            
+       
+        
+        
+        
         
     # TODO *** the real main ***
     
     # minio_client = MinioClient(False)
-    # filesPathsList = minio_client.load_data('/home/fushan/fs_fire_detect/untreatImg/')
-
+    # filesPathsList = list(minio_client.load_data('/home/fushan/fs_fire_detect/untreatedImg/'))
+    
     # for filesPath in filesPathsList:
     #     filesName = filesPath.split("/")
     #     filesName = filesName[-2]
     #     imgName = ""
     #     repo_json = []
-    #     imgNames = find_all_files(filesPath) 
-            
-    #     for imgName in imgNames:
-    #         imgWPath = filesPath+imgName+"_W"+SUFFIXES
-    #         imgTpath = filesPath+imgName+"_T"+SUFFIXES
-    #         # jsonPath = LOCAL_JSON+filesName+"/"+imgName+"_F.json"
+    #     imgTWnames = find_all_files(filesPath) 
+    
+        
+    #     dirs = [LOCAL_JSON+filesName,LOCAL_RAW+filesName,LOCAL_RECT+filesName]
+    #     for dir in dirs:
+    #         if not os.path.exists(dir):
+    #             os.makedirs(dir)
+        
+    #     for imgName in imgTWnames:
+    #         imgTname = imgName[0]
+    #         imgWname = imgName[1]
+    #         imgTpath = filesPath+imgTname
+    #         imgWPath = filesPath+imgWname
     #         try:
     #             repo_data = doSingleImg(imgWPath,imgTpath,imgName,filesName)
     #             repo_json.append(repo_data)
@@ -420,43 +397,43 @@ if __name__ == '__main__':
     #         except Exception as e:
     #             traceback.print_exc()   
     
-    # client = MysqlClient(True, base_path='/home/fushan/fs_fire_detect/rectImg')
-    # client.deal_data(repo_json) # repo_json:list        
+    #     client = MysqlClient(True, base_path='/home/fushan/fs_fire_detect/rectImg')
+    #     client.deal_data(repo_json) # repo_json:list        
     
     # TODO * singleTest files process
     
-    filesPath = LOCAL_UNTREAT+"71b31487-55bf-4330-bb1c-caca5f460fe1/DJI_202304271553_013_71b31487-55bf-4330-bb1c-caca5f460fe1/"
-    filesName = filesPath.split("/")
-    filesName = filesName[-2]
-    imgName = ""
-    repo_json = []
-    imgTWnames = find_all_files(filesPath) 
+    # filesPath = LOCAL_UNTREAT+"71b31487-55bf-4330-bb1c-caca5f460fe1/DJI_202304271553_013_71b31487-55bf-4330-bb1c-caca5f460fe1/"
+    # filesName = filesPath.split("/")
+    # filesName = filesName[-2]
+    # imgName = ""
+    # repo_json = []
+    # imgTWnames = find_all_files(filesPath) 
     
     
-    dirs = [LOCAL_JSON+filesName,LOCAL_RAW+filesName,LOCAL_RECT+filesName]
-    for dir in dirs:
-        if not os.path.exists(dir):
-            os.makedirs(dir)
+    # dirs = [LOCAL_JSON+filesName,LOCAL_RAW+filesName,LOCAL_RECT+filesName]
+    # for dir in dirs:
+    #     if not os.path.exists(dir):
+    #         os.makedirs(dir)
         
-    for imgName in imgTWnames:
-        imgTname = imgName[0]
-        imgWname = imgName[1]
-        imgTpath = filesPath+imgTname
-        imgWPath = filesPath+imgWname
-        # jsonPath = LOCAL_JSON+filesName+"/"+imgName+"_F.json"
-        # * test
-        repo_data = doSingleImg(imgWPath,imgTpath,imgName,filesName)
+    # for imgName in imgTWnames:
+    #     imgTname = imgName[0]
+    #     imgWname = imgName[1]
+    #     imgTpath = filesPath+imgTname
+    #     imgWPath = filesPath+imgWname
+    #     # jsonPath = LOCAL_JSON+filesName+"/"+imgName+"_F.json"
+    #     # * test
+    #     repo_data = doSingleImg(imgWPath,imgTpath,imgName,filesName)
         
-        try:
-            repo_data = doSingleImg(imgWPath,imgTpath,imgName,filesName)
-            repo_json.append(repo_data)
-        #     with open(jsonPath,"w") as fp:
-        #         json.dump(repo_data,fp)
-        except Exception as e:
-            traceback.print_exc()   
+    #     try:
+    #         repo_data = doSingleImg(imgWPath,imgTpath,imgName,filesName)
+    #         repo_json.append(repo_data)
+    #     #     with open(jsonPath,"w") as fp:
+    #     #         json.dump(repo_data,fp)
+    #     except Exception as e:
+    #         traceback.print_exc()   
     
-    client = MysqlClient(True, base_path='/home/fushan/fs_fire_detect/rectImg')
-    client.deal_data(repo_json) # repo_json:list        
+    # client = MysqlClient(True, base_path='/home/fushan/fs_fire_detect/rectImg')
+    # client.deal_data(repo_json) # repo_json:list        
     
              
     # 检测完整性

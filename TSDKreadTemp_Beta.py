@@ -64,7 +64,7 @@ class TSDK_TemProcess:
         print('--------tsdk start--------')
         # 选择的模式是measure输出的结果是温度信息，不是原始信息；
         param = '-s ' + imgTpath + ' -a measure -o ' +savePath+imgName+ '.raw'
-        print(tsdk+' '+param)
+        # print(tsdk+' '+param)
         r_v = os.system(param0 +" && "+ tsdk+' '+param)
         print(str(r_v)+'\n---------tsdk end---------')  # 输出的为tsdk.exe运行的返回值
 
