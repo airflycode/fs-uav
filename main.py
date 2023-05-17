@@ -22,7 +22,7 @@ LOCAL_RAW = "rawImg/"
 LOCAL_SNIP = "snipImg/"
 LOCAL_JSON = "fire_data_json/"
 LOCAL_RECT = "rectImg/"
-
+M = 3
 
 SNIP_LEN = 75
 
@@ -61,7 +61,7 @@ def detect_outliers(gray, ppmax, threshold=3):
     
     gray_u8 = gray.astype(np.uint8)
     gray_clean = np.zeros_like(gray)
-    ret, gray_mask = cv2.threshold(gray_u8, mean+std*1, 255, cv2.THRESH_BINARY)
+    ret, gray_mask = cv2.threshold(gray_u8, mean+std*M, 255, cv2.THRESH_BINARY)
     # 可信范围 thin_mask
     thin_mask = calcContours(gray_mask,thres=100)
     cv2.bitwise_and(gray,gray,gray_clean,thin_mask) 
@@ -207,9 +207,9 @@ def genRectImgs(data,imgT,imgName,filesName,isW):
         cv2.rectangle(rect_img,(xmin,ymin),(xmax,ymax),(0,0,255),4,4)
         
     if isW:
-        rect_path =  LOCAL_RECT+filesName+"/"+imgName+"_RW.JPG"
+        rect_path =  LOCAL_RECT+filesName+"/"+imgName[1][:-7]+"_RW.jpeg"
     else:
-        rect_path =  LOCAL_RECT+filesName+"/"+imgName+"_RT.JPG"
+        rect_path =  LOCAL_RECT+filesName+"/"+imgName[0][:-7]+"_RT.jpeg"
         
     cv2.imwrite(rect_path,rect_img)
     return rect_path
@@ -279,7 +279,7 @@ def find_all_files(files_path):
     files_names = []
     thisFile = []
     """遍历指定文件夹所有指定类型文件"""
-    for filename in glob.glob(files_path+'*_T.jpeg'):
+    for filename in glob.glob(glob.escape(files_path)+'*_T.jpeg'):
         filename = filename.split("/")
         imgTname = filename[-1].split(".")
         
@@ -295,7 +295,6 @@ def find_all_files(files_path):
         files_names.append(thisFile)
         thisFile = []
     return files_names 
-
 
 def processfiles(filesPathsList,mysqlClient):
     print("------img process on------")
@@ -320,20 +319,28 @@ def processfiles(filesPathsList,mysqlClient):
             try:
                 repo_data = doSingleImg(imgWPath,imgTpath,imgName,filesName)
                 repo_json.append(repo_data) # 上传的数据 待mysql处理
-            #     with open(jsonPath,"w") as fp:
-            #         json.dump(repo_data,fp)
+                # jsonPath = LOCAL_JSON+filesName+"/"+imgTname+"_F.json"
+                # with open(jsonPath,"w") as fp:
+                #     json.dump(repo_data,fp)
             except Exception as e:
                 traceback.print_exc()
+                
+        jsonPath = LOCAL_JSON+filesName+"_F.json"
+        with open(jsonPath,"w") as fp:
+            json.dump(repo_json,fp)    
+            
         mysqlClient.deal_data(repo_json)
         print("process done")
     
 
 if __name__ == '__main__':
+       
     
-    # with open('/data/dealt.json', 'r') as f:
-    #     json_data = json.load(f)
-    #     json_data = json_data['dealt']
-    #     print(json_data)
+    # work_dir = os.path.dirname(os.path.abspath(__file__))
+    # CONF_FILE = os.path.join(work_dir,'server.conf')
+
+    
+    # * 线上部署
     minio_client = MinioClient(False)
     client = MysqlClient(True, base_path='/home/fushan/fs_fire_detect/rectImg')
     old_count = 0
@@ -352,7 +359,7 @@ if __name__ == '__main__':
         else:
             print(old_count)
             # if is_uploading:
-            filesPathsList = list(minio_client.load_data('/home/fushan/fs_fire_detect/untreatedImg/'))
+            filesPathsList = list(minio_client.load_data('/home/fushan/fs_fire_detect/untreatedImg'))
             print("downloading-----")
             # is_uploading = False
             if filesPathsList != []:
@@ -361,15 +368,16 @@ if __name__ == '__main__':
             else:
                 print("wayline data clear")
             
-       
+       ## 线上部署
         
         
         
         
-    # TODO *** the real main ***
+    # * 本地指定文件夹上传
     
     # minio_client = MinioClient(False)
-    # filesPathsList = list(minio_client.load_data('/home/fushan/fs_fire_detect/untreatedImg/'))
+    # # filesPathsList = list(minio_client.load_data('/home/fushan/fs_fire_detect/untreatedImg/'))
+    # filesPathsList = ["/home/fushan/fs_fire_detect/untreatedImg/402b20a5-74c6-4c78-bd84-a7b7e52d1131/"]
     
     # for filesPath in filesPathsList:
     #     filesName = filesPath.split("/")
@@ -382,6 +390,7 @@ if __name__ == '__main__':
     #     dirs = [LOCAL_JSON+filesName,LOCAL_RAW+filesName,LOCAL_RECT+filesName]
     #     for dir in dirs:
     #         if not os.path.exists(dir):
+    #             print(dir,"is generated")
     #             os.makedirs(dir)
         
     #     for imgName in imgTWnames:
@@ -392,17 +401,20 @@ if __name__ == '__main__':
     #         try:
     #             repo_data = doSingleImg(imgWPath,imgTpath,imgName,filesName)
     #             repo_json.append(repo_data)
-    #         #     with open(jsonPath,"w") as fp:
-    #         #         json.dump(repo_data,fp)
     #         except Exception as e:
     #             traceback.print_exc()   
+                
+    #     jsonPath = LOCAL_JSON+imgName[0][:-2]+"_F.json"
+    #     with open(jsonPath,"w") as fp:
+    #         json.dump(repo_json,fp)
+            
+        # client = MysqlClient(True, base_path='/home/fushan/fs_fire_detect/rectImg')
+        # client.deal_data(repo_json) # repo_json:list        
     
-    #     client = MysqlClient(True, base_path='/home/fushan/fs_fire_detect/rectImg')
-    #     client.deal_data(repo_json) # repo_json:list        
+    # # TODO * singleTest files process
     
-    # TODO * singleTest files process
-    
-    # filesPath = LOCAL_UNTREAT+"71b31487-55bf-4330-bb1c-caca5f460fe1/DJI_202304271553_013_71b31487-55bf-4330-bb1c-caca5f460fe1/"
+    # # filesPath = LOCAL_UNTREAT+"71b31487-55bf-4330-bb1c-caca5f460fe1/DJI_202304271553_013_71b31487-55bf-4330-bb1c-caca5f460fe1/"
+    # filesPath = LOCAL_UNTREAT+"/0517testdata/"
     # filesName = filesPath.split("/")
     # filesName = filesName[-2]
     # imgName = ""
@@ -427,8 +439,10 @@ if __name__ == '__main__':
     #     try:
     #         repo_data = doSingleImg(imgWPath,imgTpath,imgName,filesName)
     #         repo_json.append(repo_data)
-    #     #     with open(jsonPath,"w") as fp:
-    #     #         json.dump(repo_data,fp)
+            
+    #         jsonPath = LOCAL_JSON+filesName+"_F.json"
+    #         with open(jsonPath,"w") as fp:
+    #             json.dump(repo_json,fp)
     #     except Exception as e:
     #         traceback.print_exc()   
     
@@ -467,3 +481,57 @@ if __name__ == '__main__':
     # with open(jsonPath,"w") as fp:
     #     json.dump(repo_data,fp)
         
+
+    # 数据测试1
+    # def genJson(imgWPath,imgTpath):
+        
+    #     repo_data = {
+    #             "shot_time":"2023-03-31 14:27:14",
+    #             "lat_lon":[36.69,117.09],
+    #             "fire_data":[[480.0, 124.0, 181.5]],
+    #             "origin_w_file":imgWPath,
+    #             "w_file":imgWPath,
+    #             "origin_t_file":imgTpath,
+    #             "t_file":imgTpath,
+    #             # "fire_img_snip":paths,
+    #             "error_info":"",
+    #             "status":"101",
+    #         }
+        
+    #     return repo_data
+
+    
+    # minio_client = MinioClient(False)
+    # # filesPathsList = list(minio_client.load_data('/home/fushan/fs_fire_detect/untreatedImg/'))
+    # filesPathsList = ["/home/fushan/fs_fire_detect/untreatedImg/71b31487-55bf-4330-bb1c-caca5f460fe1/DJI_202304271553_013_71b31487-55bf-4330-bb1c-caca5f460fe1/"]
+    
+    # for filesPath in filesPathsList:
+    #     filesName = filesPath.split("/")
+    #     filesName = filesName[-2]
+    #     imgName = ""
+    #     repo_json = []
+    #     imgTWnames = find_all_files(filesPath) 
+    
+        
+    #     dirs = [LOCAL_JSON+filesName,LOCAL_RAW+filesName,LOCAL_RECT+filesName]
+    #     for dir in dirs:
+    #         if not os.path.exists(dir):
+    #             print(dir,"is generated")
+    #             os.makedirs(dir)
+        
+    #     for imgName in imgTWnames:
+    #         imgTname = imgName[0]
+    #         imgWname = imgName[1]
+    #         imgTpath = filesPath+imgTname
+    #         imgWPath = filesPath+imgWname
+    #         try:
+    #             repo_data = genJson(imgWPath,imgTpath)
+    #             repo_json.append(repo_data)
+    #         except Exception as e:
+    #             traceback.print_exc()   
+                
+    #     # jsonPath = LOCAL_JSON+imgName[0][:-2]+"_F.json"
+    #     # with open(jsonPath,"w") as fp:
+    #     #     json.dump(repo_json,fp)
+    #     client = MysqlClient(True, base_path='/home/fushan/fs_fire_detect/rectImg')
+    #     client.deal_data(repo_json) # repo_json:list        

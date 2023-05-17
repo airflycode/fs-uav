@@ -153,4 +153,10 @@ def find_all_files(files_path):
         thisFile = []
     return files_names 
 
-imgNames = find_all_files(filesPath)
+# imgNames = find_all_files(filesPath)
+
+files = glob.glob('*')
+print(files)
+tarfiles = glob.glob('/home/fushan/fs_fire_detect/untreatedImg/71b31487-55bf-4330-bb1c-caca5f460fe1/*')
+print(tarfiles)
+
