@@ -56,17 +56,34 @@ class TSDK_TemProcess:
 
     def tsdkGenRaw(self, tsdk, imgTpath, savePath, imgName):     
         
+        # # mostly
+        # print('--------export libdrip.so--------')
+        # param0 = "export LD_LIBRARY_PATH=/usr/local/lib:"+self.tsdkPath[:-7]
+        # print(param0)
+        # # r_v = os.system(param0)  
+        
+        # print('--------tsdk start--------')
+        # # 选择的模式是measure输出的结果是温度信息，不是原始信息；
+        # param = '-s ' + imgTpath + ' -a measure -o ' +savePath+imgName+ '.raw'
+        # # print(tsdk+' '+param)
+        # r_v = os.system(param0 +" && "+ tsdk+' '+param)
+        # print(str(r_v)+'\n---------tsdk end---------')  # 输出的为tsdk.exe运行的返回值
+        
+        #ggmuav
         print('--------export libdrip.so--------')
-        param0 = "export LD_LIBRARY_PATH=/usr/local/lib:"+self.tsdkPath[:-7]
-        print(param0)
-        # r_v = os.system(param0)  
+        # param0 = "export LD_LIBRARY_PATH=/usr/local/lib:"+self.tsdkPath[:-7]
+        # print(param0)
+        # # r_v = os.system(param0)  
         
         print('--------tsdk start--------')
         # 选择的模式是measure输出的结果是温度信息，不是原始信息；
         param = '-s ' + imgTpath + ' -a measure -o ' +savePath+imgName+ '.raw'
-        # print(tsdk+' '+param)
-        r_v = os.system(param0 +" && "+ tsdk+' '+param)
-        print(str(r_v)+'\n---------tsdk end---------')  # 输出的为tsdk.exe运行的返回值
+        print(tsdk+' '+param)
+        r_v = os.system(tsdk+' '+param)
+        print(str(r_v)+'\n---------tsdk end---------')  # 输出的为tsdk.exe运行的返回值  
+        
+        
+        
 
     def tsdkGenRaw_Params(self, tsdk, imgTpath, savePath, imgName):
         print('--------tsdk start--------')
@@ -158,7 +175,7 @@ class TSDK_TemProcess:
         return sum/cnt  # 均值
 
 if __name__ == "__main__":
-    imgRname = "/home/fushan/fs_fire_detect/thermal_QingDao/img_test/IMG_M30T/DJI_20230331142744_0003_T.JPG"
+    imgRname = "./thermal_QingDao/img_test/IMG_M30T/DJI_20230331142744_0003_T.JPG"
     name = "DJI_20230331142744_0003"
 
 

@@ -151,12 +151,66 @@ def find_all_files(files_path):
         thisFile.append('.'.join(imgWname))
         files_names.append(thisFile)
         thisFile = []
-    return files_names 
+    return files_names
+
+import glob
+import os
+def find_all_files_JPG(files_path):
+    files_names = []
+    thisFile = []
+    """遍历指定文件夹所有指定类型文件"""
+    for filename in glob.glob(files_path+'*_T.JPG'):
+        filename1 = filename.split("/")
+        imgTname = filename1[-1].split(".")
+        print("--------")
+        print(filename)
+        thisFile.append('.'.join(imgTname))
+        # 序列号 
+        nameAttr = imgTname[0][-6:-2]
+        newTpath = os.path.join(filename1[0],filename1[1],nameAttr+"_T.JPG")
+        print(newTpath)
+        os.rename(filename,newTpath)
+        
+        imgWpath = glob.glob(files_path+"*"+nameAttr+'*_W.JPG')
+        
+        imgWname1= imgWpath[0].split("/")
+        imgWname = imgWname1[-1].split(".")
+        thisFile.append('.'.join(imgWname))
+        print("--------")
+        print(imgWpath[0])
+        newWpath = os.path.join(filename1[0],filename1[1],nameAttr+"_W.JPG")
+        print(newWpath)
+        # print(os.path.join(imgWname1[0],imgWname1[1],nameAttr+"_W.JPG"))
+        os.rename(imgWpath[0],newWpath)
+        files_names.append(thisFile)
+        thisFile = []
+        
+    return files_names
 
 # imgNames = find_all_files(filesPath)
 
-files = glob.glob('*')
-print(files)
-tarfiles = glob.glob('/home/fushan/fs_fire_detect/untreatedImg/71b31487-55bf-4330-bb1c-caca5f460fe1/*')
-print(tarfiles)
+# files = glob.glob('*')
+# print(files)
+# tarfiles = glob.glob('/home/fushan/fs_fire_detect/untreatedImg/71b31487-55bf-4330-bb1c-caca5f460fe1/*')
+# print(tarfiles)
 
+
+# files_path = "/root/fs_fire_detect/fs-uav/thermal_QingDao/img_firespot_alter/"
+# import os
+# for filename in glob.glob(files_path+'*_Z.JPG'):
+#     print(filename)
+#     os.remove(filename)
+
+
+filesPath = "thermal_QingDao/img_firespot_alter/"
+# filesName = filesPath.split("/")
+# filesName = filesName[-2]
+# imgName = ""
+# repo_json = []
+
+# imgTWnames = find_all_files_JPG(filesPath) 
+# print(imgTWnames)
+
+for i in range(1,13+1):
+    attrName = "0"*(3-i//10) + str(i)
+    print(i,attrName)

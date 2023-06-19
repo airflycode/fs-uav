@@ -81,18 +81,20 @@ class ImageInfo:
         else:
             return  Lat, Lon
 
+    
+
     # 获取飞行高度
-    # def get_altitude(self):
-    #     # XMLPacket = self.exif_df[self.exif_df['nice'] == 'XMLPacket']['v'].tolist()[0]
-    #     absoluteAltitude = float(self.xmpDict['Xmp.drone-dji.AbsoluteAltitude'])
-    #     relativeAltitude = float(self.xmpDict['Xmp.drone-dji.RelativeAltitude'])
-    #     return absoluteAltitude, relativeAltitude
-    #     # try:
-    #     #     altitude=self.tags['GPS GPSAltitude'].printable
-    #     #     altitudeRef=self.tags['GPS GPSAltitudeRef'].printable
-    #     #     return altitude,altitudeRef
-    #     # except:
-    #     #     print("ERROR:请确保照片包含高度等EXIF信息。")
+    def get_altitude(self):
+        # XMLPacket = self.exif_df[self.exif_df['nice'] == 'XMLPacket']['v'].tolist()[0]
+        absoluteAltitude = float(self.xmpDict['Xmp.drone-dji.AbsoluteAltitude'])
+        relativeAltitude = float(self.xmpDict['Xmp.drone-dji.RelativeAltitude'])
+        return absoluteAltitude, relativeAltitude
+        # try:
+        #     altitude=self.tags['GPS GPSAltitude'].printable
+        #     altitudeRef=self.tags['GPS GPSAltitudeRef'].printable
+        #     return altitude,altitudeRef
+        # except:
+        #     print("ERROR:请确保照片包含高度等EXIF信息。")
 
     # 获取云台偏转角度
     # def get_degree_info(self):
@@ -288,7 +290,7 @@ if __name__ == '__main__':
     # print(math.atan2(15, 25) * 180 / math.pi)
     # cv2.imread('unTreatedImg/DJI_0124.jpg')
     # imageFileName = 'unTreatedImg/DJI_0054.jpg'
-    testImgPath = r"/home/fushan/fs_fire_detect/thermal_QingDao/img_test/IMG_M30T/DJI_20230331142715_0001_T.JPG"
+    testImgPath = "thermal_QingDao/img_firespot_alter/0001_W.JPG"
     # testImgPath = r'./unTreatedImg/DJI_0002.jpg'
     testImg = ImageInfo(testImgPath)
     print(testImg.get_camera_lat_lon())
@@ -301,7 +303,8 @@ if __name__ == '__main__':
     # imageInfo = ImageInfo(imageFileName)
     # imageInfo.get_Time()
     # print(imageInfo.get_center_lat_lon().format_decimal())
-    # # print(imageInfo.get_altitude())
+    # print(imageInfo.get_altitude())
+    print(testImg.get_altitude())
     # # print(imageInfo.get_camera_lat_lon())
     # print('degree',imageInfo.get_degree_info())
     # # print(imageInfo.get_center_lat_lon())

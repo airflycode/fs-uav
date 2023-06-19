@@ -10,8 +10,9 @@ from ImageInfo import ImageInfo
 from watchdog.observers import Observer
 from watchdog.events import *
 import time
-from utils.minioUtil import MinioClient
-from utils.mysqlUtil import MysqlClient
+from readDJI import readDJI
+# from utils.minioUtil import MinioClient
+# from utils.mysqlUtil import MysqlClient
  
 import glob
 
@@ -143,6 +144,9 @@ def fire_detect(imgTpath,imgName,filesName):
     pmax = tsdkT.thermal_np.max()
     for i in np.where(tsdkT.thermal_np == pmax):
         i = list(i)
+        # 奇怪的错误处理
+        if i[0]>512 or i[1]>640:
+            continue
         i.append(pmax)
         ppmax.append(i)
     
@@ -156,6 +160,12 @@ def fire_detect(imgTpath,imgName,filesName):
     fire_data = pp_sort(errPP)
     
     return fire_data
+    """
+    fire_data:
+    [  高温点像素位置(红外图) 温度（伪
+     [336.0, 662.0, 171.8],
+     [522.0, 1158.0,  98.8] ],
+     """
 
 
 
@@ -206,24 +216,30 @@ def genRectImgs(data,imgT,imgName,filesName,isW):
 
         cv2.rectangle(rect_img,(xmin,ymin),(xmax,ymax),(0,0,255),4,4)
         
+    # if isW:
+    #     rect_path =  LOCAL_RECT+filesName+"/"+imgName[1][:-7]+"_RW.jpeg"
+    # else:
+    #     rect_path =  LOCAL_RECT+filesName+"/"+imgName[0][:-7]+"_RT.jpeg"
+    # 测试   
+    
     if isW:
-        rect_path =  LOCAL_RECT+filesName+"/"+imgName[1][:-7]+"_RW.jpeg"
+        rect_path =  LOCAL_RECT+filesName+"/"+imgName[1][:-6]+"_RW.jpeg"
     else:
-        rect_path =  LOCAL_RECT+filesName+"/"+imgName[0][:-7]+"_RT.jpeg"
+        rect_path =  LOCAL_RECT+filesName+"/"+imgName[0][:-6]+"_RT.jpeg"
         
     cv2.imwrite(rect_path,rect_img)
     return rect_path
     
     
     
-def doSingleImg(imgWPath,imgTpath,imgName,filesName):
+def doSingleImg(imgWpath,imgTpath,imgName,filesName):
     
     # * test
-    fire_data = fire_detect(imgTpath,imgName,filesName)
+    # fire_data = fire_detect(imgTpath,imgName,filesName)
     
     try:
-        print(os.path.isfile(imgWPath))
-        currImageInfo = ImageInfo(imgWPath)
+        print(os.path.isfile(imgWpath))
+        currImageInfo = ImageInfo(imgWpath)
         #shot time
         shotTime = currImageInfo.get_Time()
         #lat lon camera central
@@ -244,7 +260,7 @@ def doSingleImg(imgWPath,imgTpath,imgName,filesName):
             return repo_data
         else:
             imgT = cv2.imread(imgTpath)
-            imgW = cv2.imread(imgWPath)
+            imgW = cv2.imread(imgWpath)
             rect_path_T = genRectImgs(fire_data,imgT,imgName,filesName,isW=0)
             rect_path_W = genRectImgs(fire_data,imgW,imgName,filesName,isW=1)
             
@@ -252,7 +268,7 @@ def doSingleImg(imgWPath,imgTpath,imgName,filesName):
                 "shot_time":shotTime,
                 "lat_lon":[lat,lon],
                 "fire_data":fire_data,
-                "origin_w_file":imgWPath,
+                "origin_w_file":imgWpath,
                 "w_file":rect_path_W,
                 "origin_t_file":imgTpath,
                 "t_file":rect_path_T,
@@ -341,32 +357,32 @@ if __name__ == '__main__':
 
     
     # * 线上部署
-    minio_client = MinioClient(False)
-    client = MysqlClient(True, base_path='/home/fushan/fs_fire_detect/rectImg')
-    old_count = 0
-    new_count = 0
-    is_uploading = False
+    # minio_client = MinioClient(False)
+    # client = MysqlClient(True, base_path='/home/fushan/fs_fire_detect/rectImg')
+    # old_count = 0
+    # new_count = 0
+    # is_uploading = False
     
     
-    while True:
-        new_count = client.count()
-        if old_count < new_count:
-            print("uploading------")
-            # is_uploading = True
-            old_count = new_count
-            print(old_count)
-            time.sleep(60)
-        else:
-            print(old_count)
-            # if is_uploading:
-            filesPathsList = list(minio_client.load_data('/home/fushan/fs_fire_detect/untreatedImg'))
-            print("downloading-----")
-            # is_uploading = False
-            if filesPathsList != []:
-                print("start process")
-                processfiles(filesPathsList,client)
-            else:
-                print("wayline data clear")
+    # while True:
+    #     new_count = client.count()
+    #     if old_count < new_count:
+    #         print("uploading------")
+    #         # is_uploading = True
+    #         old_count = new_count
+    #         print(old_count)
+    #         time.sleep(60)
+    #     else:
+    #         print(old_count)
+    #         # if is_uploading:
+    #         filesPathsList = list(minio_client.load_data('/home/fushan/fs_fire_detect/untreatedImg'))
+    #         print("downloading-----")
+    #         # is_uploading = False
+    #         if filesPathsList != []:
+    #             print("start process")
+    #             processfiles(filesPathsList,client)
+    #         else:
+    #             print("wayline data clear")
             
        ## 线上部署
         
@@ -413,8 +429,9 @@ if __name__ == '__main__':
     
     # # TODO * singleTest files process
     
-    # # filesPath = LOCAL_UNTREAT+"71b31487-55bf-4330-bb1c-caca5f460fe1/DJI_202304271553_013_71b31487-55bf-4330-bb1c-caca5f460fe1/"
+    # filesPath = LOCAL_UNTREAT+"71b31487-55bf-4330-bb1c-caca5f460fe1/DJI_202304271553_013_71b31487-55bf-4330-bb1c-caca5f460fe1/"
     # filesPath = LOCAL_UNTREAT+"/0517testdata/"
+    # filesPath = "/root/fs_fire_detect/fs-uav/thermal_QingDao/img_test/IMG_M30T/"
     # filesName = filesPath.split("/")
     # filesName = filesName[-2]
     # imgName = ""
@@ -449,13 +466,14 @@ if __name__ == '__main__':
     # client = MysqlClient(True, base_path='/home/fushan/fs_fire_detect/rectImg')
     # client.deal_data(repo_json) # repo_json:list        
     
-             
+    
     # 检测完整性
     # name = "DJI_20230331142744_0003_T"
     # imgPath = "./thermal_QingDao/img_test/IMG_M30T/"
     # imgName = imgPath+name+".JPG"
     # img =  cv2.imread(imgName)
-    # savePath = "./thermal_QingDao/img_treated/IMG_M30T/"
+    # # savePath = "./thermal_QingDao/img_treated/IMG_M30T/"
+    # savePath = "./rawImg/"
     # try:
     #     tsdkT = TSDK_TemProcess(imgName,name,tsdkpath="./DJI_TSDK/DJI_TSDK_linux/utility/bin/linux/release_x64/dji_irp", 
     #                             savePath = "./thermal_QingDao/img_treated/",imgPath = "./thermal_QingDao/img_untreated/")
@@ -535,3 +553,111 @@ if __name__ == '__main__':
     #     #     json.dump(repo_json,fp)
     #     client = MysqlClient(True, base_path='/home/fushan/fs_fire_detect/rectImg')
     #     client.deal_data(repo_json) # repo_json:list        
+    
+    # 火点检测测试脚本
+    # 范围要求：
+    # 1-13 烟头 
+    # 15 -25  火机
+    # 27-100 小明火
+    # 102之后 稍微大 点的明火
+    
+    #获取全部文件列表
+    # filesPath = "/thermal_QingDao/img_firespot_alter/"
+    # filesName = filesPath.split("/")
+    # filesName = filesName[-2]
+    # imgName = ""
+    # repo_json = []
+    # imgTWnames = find_all_files(filesPath) 
+    
+    
+    # dirs = [LOCAL_JSON+filesName,LOCAL_RAW+filesName,LOCAL_RECT+filesName]
+    # for dir in dirs:
+    #     if not os.path.exists(dir):
+    #         os.makedirs(dir)
+    
+    # 
+
+    filesPath = "thermal_QingDao/img_firespot_alter/"
+    filesName = "img_firespot_alter"
+    #轮询 
+    
+    # 1-13 烟头 
+    for i in range(1,13):
+        attrName = "0"*(4-len(str(i))) + str(i)
+        imgTpath = filesPath + attrName + "_T.JPG"
+        imgWpath = filesPath + attrName + "_W.JPG"
+        imgName = [attrName + "_T.JPG",attrName + "_W.JPG"]
+        dji_data_dict = readDJI(imgWpath)
+        
+        
+        relativeH= dji_data_dict["RelativeAltitude"]
+        repo_json = doSingleImg(imgWpath,imgTpath,imgName,filesName)
+        relativeH = {"relativeH":relativeH}
+        repo_json.update(relativeH)
+        # fire_data = fire_detect(imgTpath,attrName,filesName)
+        
+        jsonPath = LOCAL_JSON+filesName+"/"+attrName+"_F.json"
+        with open(jsonPath,"w") as fp:
+            json.dump(repo_json,fp)
+
+    # 15 -25  火机
+    for i in range(15,25+1):
+        
+        attrName = "0"*(4-len(str(i))) + str(i)
+        imgTpath = filesPath + attrName + "_T.JPG"
+        imgWpath = filesPath + attrName + "_W.JPG"
+        imgName = [attrName + "_T.JPG",attrName + "_W.JPG"]
+        dji_data_dict = readDJI(imgWpath)
+        
+        
+        relativeH= dji_data_dict["RelativeAltitude"]
+        repo_json = doSingleImg(imgWpath,imgTpath,imgName,filesName)
+        relativeH = {"relativeH":relativeH}
+        repo_json.update(relativeH)
+        # fire_data = fire_detect(imgTpath,attrName,filesName)
+        
+        jsonPath = LOCAL_JSON+filesName+"/"+attrName+"_F.json"
+        with open(jsonPath,"w") as fp:
+            json.dump(repo_json,fp)
+            
+    # 27-99 小明火
+    for i in range(27,100):
+        
+        attrName = "0"*(4-len(str(i))) + str(i)
+        imgTpath = filesPath + attrName + "_T.JPG"
+        imgWpath = filesPath + attrName + "_W.JPG"
+        imgName = [attrName + "_T.JPG",attrName + "_W.JPG"]
+        dji_data_dict = readDJI(imgWpath)
+        
+        
+        relativeH= dji_data_dict["RelativeAltitude"]
+        repo_json = doSingleImg(imgWpath,imgTpath,imgName,filesName)
+        relativeH = {"relativeH":relativeH}
+        repo_json.update(relativeH)
+        # fire_data = fire_detect(imgTpath,attrName,filesName)
+        
+        jsonPath = LOCAL_JSON+filesName+"/"+attrName+"_F.json"
+        with open(jsonPath,"w") as fp:
+            json.dump(repo_json,fp)
+
+    # 102之后 稍微大 点的明火
+    for i in range(102,133+1):
+        
+        attrName = "0"*(4-len(str(i))) + str(i)
+        imgTpath = filesPath + attrName + "_T.JPG"
+        imgWpath = filesPath + attrName + "_W.JPG"
+        imgName = [attrName + "_T.JPG",attrName + "_W.JPG"]
+        dji_data_dict = readDJI(imgWpath)
+        
+        
+        relativeH= dji_data_dict["RelativeAltitude"]
+        repo_json = doSingleImg(imgWpath,imgTpath,imgName,filesName)
+        relativeH = {"relativeH":relativeH}
+        repo_json.update(relativeH)
+        # fire_data = fire_detect(imgTpath,attrName,filesName)
+        
+        jsonPath = LOCAL_JSON+filesName+"/"+attrName+"_F.json"
+        with open(jsonPath,"w") as fp:
+            json.dump(repo_json,fp)     
+    
+        
